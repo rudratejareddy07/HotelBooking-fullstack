@@ -60,9 +60,7 @@ const Hero = () => {
       </div>
 
       {/* Dummy content to test scrolling */}
-      <div className="h-[1500px] bg-gray-100 flex items-center justify-center text-2xl">
-        Scroll Down to See Navbar Change
-      </div>
+      
       
     </>
   )
