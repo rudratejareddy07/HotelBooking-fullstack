@@ -17,7 +17,7 @@ const RadioButton = ({ label, selected = false, onChange = () => {} }) => (
   </label>
 );
 
-/* ✅ Filters Component (Single Source of Truth) */
+/*  Filters Component (Single Source of Truth) */
 const Filters = ({ roomTypes, priceRanges, sortOptions }) => (
   <div className="px-5 pt-5">
     <p className="font-medium text-gray-800 pb-2">Popular filters</p>
