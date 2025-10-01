@@ -139,6 +139,6 @@ const RoomDetails = () => {
       </div>
     </div>
   );
-};
+};  
 
 export default RoomDetails;
