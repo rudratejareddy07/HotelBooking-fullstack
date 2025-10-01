@@ -66,6 +66,12 @@ const MyBookings = () => {
                                     </p>
 
                                 </div>
+                                {!booking.isPaid && ( 
+                                    <button className='px-4 py-1.5 mt-4 text-xs border border-gray-400
+                                    rounded-full hover:bg-gray-50 transition-all cursor-pointer'>
+                                        Pay Now
+                                    </button>
+                                )}
                             </div>
                     </div>
 
