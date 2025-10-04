@@ -1,10 +1,11 @@
-import User from "../models/User";
-import {WebHooks} from Svix;
+import User from "../models/User.js";
+import pkg from "svix";
+const { Webhook } = pkg;
 
 const clerkWebhooks=async(req,res)=>{
     try{
         //create a svix instance with clerk webhook scret
-        const whhook = new Webhook(process.env.CLERK_WEBHOOK_SECRET)
+        const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET)
         //getting headers
 
         const headers={
@@ -53,3 +54,4 @@ const clerkWebhooks=async(req,res)=>{
         res.json({sucess:false,message:error.message});
     }
 }
+export default clerkWebhooks
