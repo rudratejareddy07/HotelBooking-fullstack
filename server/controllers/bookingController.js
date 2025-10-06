@@ -1,97 +1,121 @@
-import Booking from "../models/Booking"
-import Room from "../models/Room"
+import Booking from "../models/Booking.js";
+import Room from "../models/Room.js";
+import Hotel from "../models/Hotel.js"; 
 
+// Utility function to check room availability
+const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
+  try {
+    const bookings = await Booking.find({
+      room,
+      checkInDate: { $lte: checkOutDate },
+      checkOutDate: { $gte: checkInDate },
+    });
 
-//function to check availabbility of room
-const checkAvailability=async({checkInDate,checkOutDate,room})=>{
-    try{
-        const bookings=await Booking.find({
-            room,
-        checkInDate:{$lte:checkOutDate},
-        checkOutDate:{$gte:checkInDate}
-        })
-        
-    }catch(error){
-        console.error(error.message)
+    // Room is available if no overlapping bookings exist
+    return bookings.length === 0;
+  } catch (error) {
+    console.error("Error checking availability:", error.message);
+    return false;
+  }
+};
+
+//  API: Check room availability
+// POST /api/bookings/check-availability
+export const checkAvailabilityAPI = async (req, res) => {
+  try {
+    const { room, checkInDate, checkOutDate } = req.body;
+
+    const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
+
+    res.json({ success: true, isAvailable });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// API: Create a new booking
+// POST /api/bookings/book
+export const createBooking = async (req, res) => {
+  try {
+    const { room, checkInDate, checkOutDate, guests } = req.body;
+    const user = req.user._id;
+
+    // Check room availability before booking
+    const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
+    if (!isAvailable) {
+      return res.json({ success: false, message: "Room not available for selected dates" });
     }
-}
 
-
-//api to check availability of room
-//POST/api/bookingd/check-availabilistdy
-export const checkAvailabilityAPI=async(req,res)=>{
-    try{
-        const {room,checkInDate,checkOutDate}=req.body;
-        const isAvailable=await checkAvailability({checkInDate,checkOutDate,room});
-        res.json({success:true,isAvailable})
-    
-    }catch(error){
-         res.json({success:false,message:error.message})
+    // Get room data and linked hotel
+    const roomData = await Room.findById(room).populate("hotel");
+    if (!roomData) {
+      return res.json({ success: false, message: "Room not found" });
     }
-}
 
+    // Calculate total price based on nights
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    const timeDiff = checkOut.getTime() - checkIn.getTime();
+    const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    const totalPrice = roomData.pricePerNight * nights;
 
-//APIT TO create a new booking
-//post/api/booking/book
-export const createBooking=async(req,res)=>{
-    try{
-        const {room,checkInDate,checkOutDate,guests}=req.body;
-        const user=req.user._id;
-        //before booking check availabilaity
-        const isAvailable=await checkAvailability({checkInDate,checkOutDate,room});
-        
-        //get tortalproce from room
-        const roomData=await Room.findById(room).populate("hotel");
-        let totalPrice=roomData.pricePerNight;
+    // Create booking
+    await Booking.create({
+      user,
+      room,
+      hotel: roomData.hotel._id,
+      guests: +guests,
+      checkInDate,
+      checkOutDate,
+      totalPrice,
+    });
 
-        //calculate totalPrice based on nights
-         const checkIn = new Date(checkInDate)
-        const checkOut = new Date(checkOutDate)
-        const timeDiff =checkOut.getTime()-checkIn.getTime();
-        const nights=Math.cell(timeDiff/(1000*3600*24));
-        totalPrice*=nights;
-        const booking=await Booking.create({
-            user,
-            room,
-            hotel:roomData.hotel._id,
-            guests:+guests,
-            checkInDate,
-            checkOutDate,
-            totalPrice
-        })
-        res.json({success:true,message:"Booking created successfully"})
-    
-    }catch(error){
-        console.log(error);
-         res.json({success:false,message:"Failed to create booking"})
+    res.json({ success: true, message: "Booking created successfully" });
+  } catch (error) {
+    console.error(error);
+    res.json({ success: false, message: "Failed to create booking" });
+  }
+};
+
+//  API: Get all bookings for a user
+// GET /api/bookings/user
+export const getUserBookings = async (req, res) => {
+  try {
+    const user = req.user._id;
+    const bookings = await Booking.find({ user })
+      .populate("room hotel user")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, bookings });
+  } catch (error) {
+    console.error(error);
+    res.json({ success: false, message: "Failed to fetch user bookings" });
+  }
+};
+
+//  API: Get all bookings for a hotel owner
+// GET /api/bookings/hotel
+export const getHotelBookings = async (req, res) => {
+  try {
+    const hotel = await Hotel.findOne({ owner: req.auth.userId });
+    if (!hotel) {
+      return res.json({ success: false, message: "No hotel found for this owner" });
     }
-}
 
-//api to get all booking for a user
-//get/api/bookings/user
-export const getUserBookings=async(req,res)=>{
-    try{
-        const user=req.user._id;
-        const bookings=await Booking.find({user}.populate("room hotel user").sort({createdAt:-1}));
-        
-         res.json({success:true,bookings})
-    }catch(error){
-              res.json({success:false,message:"Failed to fetch booking"})
-    }
-}
-export const getHotelBookings=async(req,res)=>{
-    try{
-        const hotel=await Hotel.findOne({owner:req.auth.userId});
-        if(!hotel){
-            return res.json({success:false,message:"No hotel found"})
-        }
-        const bookings=await Booking.find({user}.populate("room hotel user").sort({createdAt:-1}));
-        //total bookings
-        const totalBookings=bookings.length;
-        //total revenue
-        const totalRevenue=bookings.reduce((acc,booking)=>acc+booking.totalPrice,0)
-         res.json({success:true,dashboardData:{totalBookings,totalBookings,bookings}})
-    }catch(error){
-              res.json({success:false,message:"Failed to fetch booking"})
-    }
-}
+    const bookings = await Booking.find({ hotel: hotel._id })
+      .populate("room hotel user")
+      .sort({ createdAt: -1 });
+
+    // Dashboard summary
+    const totalBookings = bookings.length;
+    const totalRevenue = bookings.reduce((acc, booking) => acc + booking.totalPrice, 0);
+
+    res.json({
+      success: true,
+      dashboardData: { totalBookings, totalRevenue, bookings },
+    });
+  } catch (error) {
+    console.error(error);
+    res.json({ success: false, message: "Failed to fetch hotel bookings" });
+  }
+};
