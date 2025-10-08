@@ -24,9 +24,9 @@ import protect from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 // Get user data
-router.get("/user", requireAuth(), protect, getUserData);
+router.get("/", requireAuth(), protect, getUserData);
 
 // Store recently searched city
-router.post("/user/recent", requireAuth(), protect, storeRecentSearchedCities);
+router.post("/recent", requireAuth(), protect, storeRecentSearchedCities);
 
 export default router;
